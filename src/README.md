@@ -176,6 +176,14 @@ control/stop-request.flag
 
 ---
 
+## ■ 使用素材
+
+- アプリアイコン  
+  Google Fonts Icons - Schedule  
+  https://fonts.google.com/icons
+
+---
+
 ## ■ ライセンス
 
 MIT License（または任意）
