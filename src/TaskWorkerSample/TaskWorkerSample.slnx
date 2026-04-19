@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../TaskWorkerSample.Tests/TaskWorkerSample.Tests.csproj" Id="e6f98586-63e6-42bb-be85-1145201ed39a" />
+  <Project Path="TaskWorkerSample.csproj" />
+</Solution>

@@ -1,0 +1,32 @@
+# 基本：テキストはLF + UTF-8
+* text=auto eol=lf
+
+# C# / ソースコード
+*.cs text eol=lf working-tree-encoding=UTF-8
+
+# プロジェクトファイル
+*.csproj text eol=lf working-tree-encoding=UTF-8
+*.sln text eol=crlf working-tree-encoding=UTF-8
+
+# 設定ファイル
+*.json text eol=lf working-tree-encoding=UTF-8
+*.xml text eol=lf working-tree-encoding=UTF-8
+*.config text eol=lf working-tree-encoding=UTF-8
+
+# Markdown / ドキュメント
+*.md text eol=lf working-tree-encoding=UTF-8
+
+# Inno Setup
+*.iss text eol=crlf working-tree-encoding=UTF-8
+
+# バッチ / PowerShell
+*.bat text eol=crlf working-tree-encoding=UTF-8
+*.ps1 text eol=crlf working-tree-encoding=UTF-8
+
+# バイナリ（変換しない）
+*.exe binary
+*.dll binary
+*.ico binary
+*.png binary
+*.jpg binary
+*.zip binary
