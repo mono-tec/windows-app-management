@@ -1,189 +1,202 @@
-# TaskWorkerSample
+# Windows App Management
 
-Windows環境でのバッチ／タスク実行アプリの  
-**実運用を意識したサンプルプロジェクト**です。
-
----
-
-## ■ 概要
-
-本プロジェクトは、以下の課題を解決することを目的としています。
-
-- タスクスケジューラ運用の属人化
-- ログ出力のばらつき
-- 設定ファイルの配置不統一
-- 多重起動や停止制御の未整備
-
-これらに対して、
-
-👉 **設定・ログ・制御・実行を分離した構成**
-
-を実装例として提供します。
+Windowsアプリの運用を安定させるための
+**開発標準とサンプル実装（＋インストーラテンプレート）**をまとめたリポジトリです。
 
 ---
 
-## ■ 特徴
+## ■ このリポジトリの目的
 
-- 設定ファイルによる実行制御
-- ログ出力の標準化（Serilog）
-- 多重起動防止（Mutex）
-- 停止要求ファイルによる制御
-- 実行モード切替（Immediate / Continuous / TimedExit / Exception）
-- インストーラ前提の構成
-- タスクスケジューラ運用を前提とした設計
+現場でよくある以下の問題を解決することを目的としています。
+
+・どのアプリが動いているか分からない
+・タスクスケジューラが乱立する
+・ログや設定の配置がバラバラになる
+
+これらを防ぐために、
+
+・構成の統一
+・再現可能な配布方法
+・運用を前提とした設計
+
+を整理しています。
+
+---
+
+## ■ このリポジトリでできること
+
+本リポジトリを利用することで、以下を実現できます。
+
+* Windowsバッチアプリの標準化
+* タスクスケジューラ運用の統一
+* 設定・ログ・制御フォルダの一元管理
+* インストーラによる配布自動化
+
+👉 **「動くアプリ」ではなく「運用できるアプリ」を構築できます**
+
+---
+
+## ■ 含まれる内容
+
+* 設計書、開発標準（docs）
+* サンプルアプリ（src）
+* インストーラ構成（Installer）
+* タスクスケジューラテンプレート（XML）
 
 ---
 
 ## ■ ディレクトリ構成
 
-### 開発時（Debug）
-
 ```
-bin/Debug/net10.0/
-  ├─ config/
-  │   └─ appsettings.json
-  ├─ logs/
-  └─ control/
+docs/       : 設計書、開発標準（ガイドライン）
+src/        : サンプルアプリケーション
+Installer/  : インストーラ定義（Inno Setup）
 ```
 
-### 本番（インストール後）
+### Installer構成
 
 ```
-C:\ProgramData\Company\AppName\
-  ├─ config/
-  │   └─ appsettings.json
-  ├─ logs/
-  └─ control/
+Installer/
+├─ base_*.iss                 : 共通インストーラ定義
+├─ *_*.iss                    : 顧客・用途別差分定義
+├─ TaskMaster_*.xml           : タスクテンプレート
+├─ customers/json/...         : 顧客別設定ファイル
+├─ Output/...                 : インストーラ出力
+└─ InnoReplacer.exe           : 文字列置換ツール
 ```
 
 ---
 
-## ■ 設定ファイル
+## ■ インストーラ作成について
 
-```json
-{
-  "ExecutionMode": "Continuous",
-  "Language": "ja",
-  "IntervalSeconds": 10,
-  "TimeoutMinutes": 10,
-  "MutexKey": "SampleMutex",
-  "Logging": {
-    "DirectoryPath": "",
-    "RetentionDays": 30
-  }
-}
-```
+本リポジトリのインストーラは、Inno Setup 形式で作成しています。  
+インストーラをビルドする場合は、必要に応じて Inno Setup をインストールしてください。
+
+また、インストーラ内で使用している `InnoReplacer.exe` は、以下の別プロジェクトで公開しています。
+
+👉 https://github.com/mono-tec/InnoReplacer
+
+`Installer` フォルダでインストーラを作成する場合は、  
+上記リポジトリから `InnoReplacer.exe` を取得し、`Installer` フォルダに配置してください。
 
 ---
 
-## ■ 起動方法
-
-### ① デフォルト（Debug用）
-
-```
-TaskWorkerSample.exe
-```
-
 ---
 
-### ② 設定ファイル指定（推奨）
+## ■ 動作確認・インストーラ作成の前提
 
-```
-TaskWorkerSample.exe --config "C:\ProgramData\Company\AppName\config\appsettings.json"
-```
+本リポジトリのインストーラをお試しいただくには、  
+事前にサンプルアプリケーションをビルド・発行する必要があります。
 
----
+インストーラは、Visual Studio の発行（Publish）機能で出力されたファイルを前提として構成されています。
 
-## ■ 実行モード
+### 前提環境
 
-| モード | 内容 |
-|------|------|
-| Immediate | 即時終了 |
-| Continuous | 継続実行 |
-| TimedExit | 指定時間で終了 |
-| Exception | 異常終了 |
-
----
-
-## ■ 停止制御
-
-以下のファイルを配置することで処理を停止できます。
-
-```
-control/stop-request.flag
-```
-
-- 起動前 → 即終了
-- 実行中 → 次ループで停止
-
----
-
-## ■ 多重起動防止
-
-- MutexKey により制御
-- 同一キーの場合は2重起動を防止
-
----
-
-## ■ ログ出力
-
-### 出力先
-
-- 設定ファイル指定あり → 指定パス
-- 未指定 → BaseDir/logs
-
----
-
-## ■ テスト
-
-### ✔ テスト仕様書
-- docs/test_spec.md
-
-### ✔ テストシート
-- docs/test_sheet.md
-
----
-
-## ■ 開発環境
-
+- Visual Studio 2025 以降（ソリューション形式の都合）
 - .NET 10
-- Visual Studio
-- Serilog
+- Inno Setup
+
+### 発行設定
+
+以下の設定でアプリケーションを発行してください。
+
+- Configuration：Release
+- RuntimeIdentifier：win-x64
+- SelfContained：true
+
+発行先フォルダ：
+
+```text
+src/TaskWorkerSample/bin/Release/net10.0/publish/win-x64/
+```
+※ Publish設定（pubxml）はリポジトリに含まれています。
+※ インストーラは上記フォルダを参照して構成されています。
+※ パスが異なる場合は、Installer 内の PublishDir 定義を調整してください。
+
+具体的な手順については、以下のブログ記事をご確認ください。
+
+👉 https://zenn.dev/mono_tec
+
+
+## ■ 発行（Publish）について
+
+本インストーラは、Visual Studio の発行（Publish）機能で出力されたファイルを前提としています。
+
+以下の設定でアプリケーションを発行してください。
+
+- Configuration：Release
+- RuntimeIdentifier：win-x64
+- SelfContained：true
+
+発行先フォルダ：
+```
+src/TaskWorkerSample/bin/Release/net10.0/publish/win-x64/
+```
+※ インストーラは上記フォルダを参照して構成されています。
 
 ---
 
-## ■ 関連ドキュメント
+## ■ 設計コンセプト
 
-- 開発標準: docs/development-guidelines.md
-- 基本仕様書: docs/specifications.md
-- 内部設計書: docs/design.md
+本プロジェクトは以下の設計思想に基づいています。
+
+* アプリと設定を分離する
+* タスク単位で実行環境を分離する
+* XMLテンプレートでタスク登録を自動化する
+* インストーラで運用構築を自動化する
 
 ---
 
-## ■ 想定用途
+## ■ 動作イメージ
 
-- Windowsタスクスケジューラ運用
-- バッチ処理の標準化
-- 運用設計のサンプル
-- 社内開発のベーステンプレート
+```
+C:\ProgramData\Company\TaskName\
+  ├─ config
+  ├─ logs
+  └─ control
+```
+
+* config：設定ファイル
+* logs：ログ出力
+* control：停止制御（stop-request.flag）
+
+---
+
+## ■ 関連記事（Zenn）
+
+本内容は以下のシリーズと連動しています。
+
+* 第1章：なぜ現場のWindowsアプリは統一管理できなくなるのか
+* 第2章：Windowsアプリ運用を安定させるための開発標準
+* 第3章：開発ポリシーをもとに実際にアプリを作ってみた
+
+👉 https://zenn.dev/mono_tec
+
+---
+
+## ■ 想定読者
+
+・Windowsアプリを現場に配布している方
+・タスクスケジューラ運用で課題を感じている方
+・小規模チーム（3～5名）で開発・運用している方
+
+---
+
+## ■ 補足
+
+本リポジトリは、実務での利用を想定したサンプル構成です。
+ツールの詳細な使用方法については扱っていません。
+
+必要に応じて各種ドキュメントをご参照ください。
 
 ---
 
 ## ■ 注意事項
 
-本プロジェクトはサンプルです。  
-実業務に適用する場合は要件に応じて調整してください。
+本リポジトリは実務での利用を想定したサンプル構成ですが、  
+一部未検証の箇所やバグが残っている可能性があります。
 
----
+主要な動作については確認済みですが、機能追加に伴いすべてのケースを網羅できていません。
 
-## ■ 使用素材
-
-- アプリアイコン  
-  Google Fonts Icons - Schedule  
-  https://fonts.google.com/icons
-
----
-
-## ■ ライセンス
-
-MIT License（または任意）
+不具合や改善点にお気づきの場合は、Issueにてご連絡いただけると助かります。  
+内容を確認のうえ、対応可能なものから随時修正していきます。
