@@ -92,7 +92,7 @@ Installer/
 
 ### 前提環境
 
-- Visual Studio 2025 以降（ソリューション形式の都合）
+- Visual Studio 2026 以降（ソリューション形式の都合）
 - .NET 10
 - Inno Setup
 
