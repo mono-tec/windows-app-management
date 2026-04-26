@@ -106,10 +106,11 @@ Source: "{#PublishDir}\*.pdb"; DestDir: "{app}"; Flags: ignoreversion recursesub
 
 ; json
 Source: "{#PublishDir}\*.json"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
-Source: "{#CustomerJsonDir}\{#SettingFileName}"; DestDir: "{code:GetSettingDir}"; Flags: ignoreversion recursesubdirs
+; 設定テンプレートは一時フォルダに配置
+Source: "{#CustomerJsonDir}\{#SettingFileName}"; DestDir: "{tmp}"; Flags: ignoreversion
 
 ; 置換ツール（実行後に削除します）
-Source: "{#ReplaceAppName}.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReplaceAppName}.exe"; DestDir: "{tmp}"; Flags: ignoreversion
 Source: "{#TaskTemplateName}.xml";   DestDir: "{app}"; Flags: ignoreversion
 
 ; ================================
@@ -132,18 +133,51 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppCodeName}.exe"
 ; ================================
 [Code]
 var
-  Page1: TInputQueryWizardPage;
+  Page1: TInputOptionWizardPage;
+  Page2: TInputQueryWizardPage;
 
-procedure InitializeWizard;
+procedure InitializeWizard();
 begin
-  { 起動時刻ページ }
- // Page 1：タスク情報
-  Page1 := CreateInputQueryPage(wpSelectDir,
-    'スケジュール設定',
-    '開始時刻（ローカル時刻）を入力してください',
-    '書式は HH:MM:SS です（例: 00:00:00）');
-  Page1.Add('タスク開始時刻:', False);
-  Page1.Values[0] := '{#TaskTempStartTime}';
+  // Page 1：設定ファイル上書き設定
+  Page1 :=
+    CreateInputOptionPage(
+      wpSelectDir,
+      '設定ファイル',
+      '既存の設定ファイルを上書きするか選択してください。',
+      '通常はチェックを外したままにしてください。既存設定を保持できます。',
+      False,
+      False
+    );
+
+  Page1.Add('既存の設定ファイルを上書きする');
+  Page1.Values[0] := False;
+
+  // Page 2：タスク開始時刻設定
+  Page2 :=
+    CreateInputQueryPage(
+      Page1.ID,
+      'スケジュール設定',
+      '開始時刻ローカル時刻を入力してください',
+      '書式は HH:MM:SS です（例：00:00:00）'
+    );
+
+Page2.Add('タスク開始時刻：', False);
+Page2.Values[0] := '{#TaskTempStartTime}';
+  
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+
+  if CurPageID = Page2.ID then
+  begin
+    if Page2.Values[0] = '' then
+    begin
+      MsgBox('開始時刻を入力してください。', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
 end;
 
 function GetExeName(Param: string): string; begin Result := '{#AppCodeName}.exe'; end;
@@ -152,7 +186,8 @@ function GetLogDir(Param: string): string; begin Result := ExpandConstant('{comm
 function GetSettingDir(Param: string): string; begin Result := ExpandConstant('{commonappdata}\{#CompName}\{#TaskName}\{#SettingDir}'); end;
 function GetSettingPath(Param: string): string; begin Result := ExpandConstant('{commonappdata}\{#CompName}\{#TaskName}\{#SettingDir}\{#SettingFileName}'); end;
 function GetControlDir(Param: string): string; begin Result := ExpandConstant('{commonappdata}\{#CompName}\{#TaskName}\control'); end;
-function GetTaskStartTime(Param: string): string; begin Result := Page1.Values[0]; end;
+function GetOverwriteConfig(): Boolean; begin  Result := Page1.Values[0]; end;
+function GetTaskStartTime(Param: string): string; begin Result := Page2.Values[0]; end;
 
 [Run]
 ; ================================
@@ -161,32 +196,29 @@ function GetTaskStartTime(Param: string): string; begin Result := Page1.Values[0
 ; ------------------------------
 ; ■ XML置換（タスク設定）
 ; ------------------------------
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_EXE_NAME#"" ""{code:GetExeName}"""; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_EXE_WORKING_DIR#"" ""{app}"""; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_USERID#"" ""{#TaskUserId}"""; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_EXE_ARGUMENTS#"" ""--config {code:GetSettingPath}"""; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_AUTHOR#"" ""{#CompName}"""; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_DESCRIPTION#"" ""{#TaskDescription}"""; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_START_TIME#"" ""{code:GetTaskStartTime}"""; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_EXE_NAME#"" ""{code:GetExeName}"""; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_EXE_WORKING_DIR#"" ""{app}"""; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_USERID#"" ""{#TaskUserId}"""; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_EXE_ARGUMENTS#"" ""--config {code:GetSettingPath}"""; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_AUTHOR#"" ""{#CompName}"""; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_DESCRIPTION#"" ""{#TaskDescription}"""; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{app}\{#TaskTemplateName}.xml"" ""#TASK_START_TIME#"" ""{code:GetTaskStartTime}"""; Flags: runhidden waituntilterminated
 
 ; ------------------------------
 ; ■ JSON置換（UTF-8）
 ; ------------------------------
 ; ※ JSONは必ずUTF-8で処理する
 ; ※ パスは \\ でエスケープすること
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{code:GetSettingPath}"" ""#APP_MUTEX_KEY#"" ""{#AppMutexKey}""  utf8bom"; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{code:GetSettingPath}"" ""#COMP_NAME#"" ""{#CompName}""  utf8bom"; Flags: runhidden waituntilterminated
-Filename: "{app}\{#ReplaceAppName}.exe"; Parameters: """{code:GetSettingPath}"" ""#TASK_NAME#"" ""{#TaskName}""  utf8bom"; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{tmp}\{#SettingFileName}"" ""#APP_MUTEX_KEY#"" ""{#AppMutexKey}""  utf8bom"; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{tmp}\{#SettingFileName}"" ""#COMP_NAME#"" ""{#CompName}""  utf8bom"; Flags: runhidden waituntilterminated
+Filename: "{tmp}\{#ReplaceAppName}.exe"; Parameters: """{tmp}\{#SettingFileName}"" ""#TASK_NAME#"" ""{#TaskName}""  utf8bom"; Flags: runhidden waituntilterminated
 
-; ------------------------------
-; ■ 文字列変換ツール削除
-; ------------------------------
-Filename: "cmd.exe"; Parameters: "/C del /F /Q ""{app}\{#ReplaceAppName}.exe"""; Flags: runhidden shellexec waituntilterminated
+; tmpから設定移動
+; 既存設定を上書きする場合
+Filename: "cmd.exe"; Parameters: "/C copy /Y ""{tmp}\{#SettingFileName}"" ""{code:GetSettingPath}"""; Flags: runhidden waituntilterminated; Check: GetOverwriteConfig
 
-; ------------------------------
-; ■ 不要な設定フォルダ削除
-; ------------------------------
-Filename: "cmd.exe"; Parameters: "/C rmdir /s /q ""{app}\{#SettingDir}"""; Flags: runhidden shellexec waituntilterminated
+; 既存設定を保持する場合
+Filename: "cmd.exe"; Parameters: "/C if not exist ""{code:GetSettingPath}"" copy /Y ""{tmp}\{#SettingFileName}"" ""{code:GetSettingPath}"""; Flags: runhidden waituntilterminated; Check: not GetOverwriteConfig
 
 ; ------------------------------
 ; ■ 権限設定
